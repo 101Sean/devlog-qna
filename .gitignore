@@ -33,16 +33,16 @@ out/
 /nbdist/
 /.nb-gradle/
 
-# Mac
+### Mac ###
 .DS_Store
 
-# Application
+### Application ###
 application.yml
 
-# Environment (보안 민감 정보)
+### Environment (보안 민감 정보) ###
 .env
 *.env
 
-# Logs
+### Logs ###
 logs/
 *.log
