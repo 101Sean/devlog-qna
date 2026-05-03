@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface QuestionTagRepository extends JpaRepository<QuestionTag, Long> {
     List<QuestionTag> findByQuestionId(Long questionId);
+    void deleteByQuestionId(Long questionId);
     void deleteByQuestionIdAndTagId(Long questionId, Long tagId);
 }

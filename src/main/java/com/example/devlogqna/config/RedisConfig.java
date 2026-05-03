@@ -1,5 +1,6 @@
 package com.example.devlogqna.config;
 
+import com.example.devlogqna.service.EmailNotificationListener;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -9,6 +10,9 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.PatternTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -56,5 +60,19 @@ public class RedisConfig {
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 );
+    }
+
+    @Bean
+    public RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory,
+                                                   MessageListenerAdapter listenerAdapter) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(listenerAdapter, new PatternTopic("email:notification"));
+        return container;
+    }
+
+    @Bean
+    public MessageListenerAdapter listenerAdapter(EmailNotificationListener listener) {
+        return new MessageListenerAdapter(listener);
     }
 }

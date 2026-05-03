@@ -1,6 +1,7 @@
 package com.example.devlogqna.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -26,6 +27,10 @@ public class QuestionUpdateRequest {
 
     @Size(max = 50)
     private String category;
+
+    @NotBlank @Email
+    @Schema(description = "작성자 확인용 이메일", example = "user@example.com")
+    private String authorEmail;
 
     @NotBlank
     @Schema(description = "수정 권한 확인용 작성자 비밀번호")
