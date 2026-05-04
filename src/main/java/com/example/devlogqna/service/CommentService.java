@@ -67,6 +67,11 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
+    @Transactional
+    public void adminDeleteComment(Long commentId) {
+        commentRepository.deleteById(commentId);
+    }
+
     private CommentResponse toResponse(Comment comment) {
         return CommentResponse.builder()
                 .id(comment.getId())

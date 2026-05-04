@@ -6,6 +6,7 @@ import com.example.devlogqna.dto.request.UnlockRequest;
 import com.example.devlogqna.dto.response.QuestionListResponse;
 import com.example.devlogqna.dto.response.QuestionResponse;
 import com.example.devlogqna.entity.Question;
+import com.example.devlogqna.entity.QuestionStatus;
 import com.example.devlogqna.entity.QuestionTag;
 import com.example.devlogqna.entity.Tag;
 import com.example.devlogqna.repository.AnswerRepository;
@@ -138,6 +139,30 @@ public class QuestionService {
             throw new IllegalArgumentException("Invalid password");
         }
         questionRepository.delete(question);
+    }
+
+    // 관리자 전용 전체 질문 조회 (비밀글 포함)
+    public Page<QuestionResponse> getAllQuestions(int page, QuestionStatus status, String category) {
+        PageRequest pageRequest = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Question> questions = questionRepository.findAllWithFilters(status, category, pageRequest);
+        return questions.map(q -> toResponse(q, true, q.getAuthorEmail()));
+    }
+
+    // 관리자 전용 질문 상태 변경
+    @Transactional
+    @CacheEvict(value = {"questionDetail", "publicQuestions"}, key = "#id")
+    public QuestionResponse updateStatus(Long id, QuestionStatus status) {
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+        question.changeStatus(status);
+        return toResponse(question, true, question.getAuthorEmail());
+    }
+
+    // 관리자 전용 질문 삭제
+    @Transactional
+    @CacheEvict(value = {"publicQuestions", "questionDetail"}, allEntries = true)
+    public void adminDeleteQuestion(Long id) {
+        questionRepository.deleteById(id);
     }
 
     // 비밀글 열람
