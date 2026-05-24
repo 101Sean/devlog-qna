@@ -18,6 +18,9 @@ public class QuestionListResponse {
     private String category;
     private QuestionStatus status;
     private Long viewCount;
+    private Long likeCount;
+    private String authorEmail;
+    private Boolean isSecret;
     private List<String> tags;
     private LocalDateTime createdAt;
 }

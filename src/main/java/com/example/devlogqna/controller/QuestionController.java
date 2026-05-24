@@ -4,7 +4,7 @@ import com.example.devlogqna.dto.request.QuestionDeleteRequest;
 import com.example.devlogqna.dto.request.QuestionRequest;
 import com.example.devlogqna.dto.request.QuestionUpdateRequest;
 import com.example.devlogqna.dto.request.UnlockRequest;
-import com.example.devlogqna.dto.response.QuestionListResponse;
+import com.example.devlogqna.dto.response.QuestionPageResponse;
 import com.example.devlogqna.dto.response.QuestionResponse;
 import com.example.devlogqna.service.QuestionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/questions")
@@ -25,7 +27,7 @@ public class QuestionController {
 
     @GetMapping
     @Operation(summary = "공개 질문 목록", description = "페이징 및 태그 필터를 제공합니다.")
-    public ResponseEntity<Page<QuestionListResponse>> getQuestions(
+    public ResponseEntity<QuestionPageResponse> getQuestions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) String tag) {
         return ResponseEntity.ok(questionService.getPublicQuestions(page, tag));
@@ -61,10 +63,11 @@ public class QuestionController {
     }
 
     @PostMapping("/{id}/unlock")
-    @Operation(summary = "비밀 질문 열람", description = "작성자 이메일과 비밀번호를 검증하여 상세 내용을 반환합니다.")
+    @Operation(summary = "비밀 질문 열람", description = "비밀번호를 검증하여 상세 내용을 반환합니다.")
     public ResponseEntity<QuestionResponse> unlockSecretQuestion(
             @PathVariable Long id,
-            @Valid @RequestBody UnlockRequest request) {
-        return ResponseEntity.ok(questionService.unlockSecretQuestion(id, request));
+            @RequestBody Map<String, String> requestBody) {
+        String password = requestBody.get("password");
+        return ResponseEntity.ok(questionService.unlockSecretQuestion(id, password));
     }
 }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+  <div class="apple-section">
+    <h2 class="apple-heading">질문 관리</h2>
+    <table class="apple-table">
+      <thead>
+      <tr>
+        <th>ID</th>
+        <th>제목</th>
+        <th>작성자</th>
+        <th>상태</th>
+        <th>좋아요</th>
+        <th>관리</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="q : ${questions.content}">
+        <td th:text="${q.id}">1</td>
+        <td><a th:href="@{/questions/{id}(id=${q.id})}" th:text="${q.title}"></a></td>
+        <td th:text="${q.authorEmail}">email</td>
+        <td>
+                        <span class="status-badge" th:classappend="'status-' + ${q.status.name().toLowerCase()}"
+                              th:text="${q.status}">OPEN</span>
+        </td>
+        <td th:text="${q.likeCount}">0</td>
+        <td>
+          <a th:href="@{/admin/questions/{id}(id=${q.id})}" class="apple-btn-secondary-sm">답변</a>
+          <button class="apple-btn-danger-sm" onclick="deleteQuestion(/*[[${q.id}]]*/)">삭제</button>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+    function deleteQuestion(id) {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        fetch(`/api/admin/questions/${id}`, { method: 'DELETE' })
+            .then(res => { if (res.ok) location.reload(); });
+    }
+</script>
+</html>

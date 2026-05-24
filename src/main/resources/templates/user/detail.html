@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      layout:decorate="~{layout}">
+<head>
+  <meta name="isAdmin" th:content="${isAdmin}">
+</head>
+<div layout:fragment="content">
+
+  <div class="apple-card detail-card">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <h2 class="apple-card-title" th:text="${question.title}"></h2>
+      <button id="deleteQuestionBtn" class="apple-btn-danger">🗑️ 삭제</button>
+    </div>
+
+    <p class="apple-card-text" th:text="${question.content}"></p>
+
+    <div class="detail-meta">
+      <span th:each="tag : ${question.tags}" class="tag-badge" th:text="${tag}"></span>
+      <span th:text="${#temporals.format(question.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+    </div>
+
+    <!-- 좋아요 + 조회수 -->
+    <div class="d-flex align-items-center gap-2 mt-3 detail-actions">
+      <button id="likeBtn" class="detail-action-btn" title="좋아요">
+        <i class="bi bi-heart-fill"></i> <span id="likeCount">0</span>
+      </button>
+      <span class="detail-action-btn">
+                <i class="bi bi-eye"></i> <span th:text="${question.viewCount}">0</span>
+            </span>
+    </div>
+
+    <!-- 관리자 답변 -->
+    <div th:if="${not #lists.isEmpty(answers)}" class="answer-section mt-3 pt-3 border-top">
+      <h4 class="apple-subheading">📌 관리자 답변</h4>
+      <div th:each="answer : ${answers}" class="answer-item">
+        <p th:text="${answer.content}"></p>
+        <small class="text-muted" th:text="${#temporals.format(answer.createdAt, 'yyyy-MM-dd HH:mm')}"></small>
+      </div>
+    </div>
+
+    <!-- 관리자 전용: 답변 작성/수정 폼 -->
+    <div sec:authorize="hasRole('ADMIN')" class="mt-3 pt-3 border-top">
+      <th:block th:if="${#lists.isEmpty(answers)}">
+        <h5>답변 등록</h5>
+        <form id="adminAnswerForm">
+          <textarea id="answerContent" class="apple-input" rows="3" placeholder="답변을 입력하세요" required></textarea>
+          <button type="submit" class="apple-btn-primary mt-2">답변 등록</button>
+        </form>
+      </th:block>
+      <th:block th:unless="${#lists.isEmpty(answers)}">
+        <h5>답변 수정</h5>
+        <th:block th:each="answer : ${answers}">
+          <form class="adminAnswerEditForm" th:data-answer-id="${answer.id}">
+            <textarea class="apple-input edit-answer-content" rows="3" th:text="${answer.content}"></textarea>
+            <button type="submit" class="apple-btn-primary mt-2">답변 수정</button>
+          </form>
+        </th:block>
+      </th:block>
+    </div>
+  </div>
+
+  <!-- 댓글 -->
+  <div class="apple-card comment-section">
+    <h4 class="apple-subheading">💬 댓글 (<span th:text="${#lists.size(comments)}">0</span>)</h4>
+    <div class="comment-list">
+      <div th:each="comment : ${comments}" class="comment-item">
+        <div class="comment-body">
+          <strong th:text="${comment.authorName}"></strong>
+          <p th:text="${comment.content}" class="mb-1"></p>
+          <span class="comment-meta" th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </div>
+        <button class="admin-delete-btn delete-comment-btn" th:data-comment-id="${comment.id}" title="댓글 삭제">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      <div th:if="${#lists.isEmpty(comments)}" class="text-muted py-3">아직 댓글이 없습니다.</div>
+    </div>
+
+    <div class="comment-form mt-3 pt-3 border-top">
+      <h5>댓글 작성</h5>
+      <form th:action="@{/questions/{id}/comments/new(id=${question.id})}" method="post" th:object="${commentRequest}">
+        <div class="row g-2" sec:authorize="!hasRole('ADMIN')">
+          <div class="col-md-4"><input type="text" th:field="*{authorName}" class="apple-input" placeholder="이름" required></div>
+          <div class="col-md-4"><input type="email" th:field="*{authorEmail}" class="apple-input" placeholder="이메일" required></div>
+          <div class="col-md-4"><input type="password" th:field="*{password}" class="apple-input" placeholder="비밀번호" required></div>
+        </div>
+        <textarea th:field="*{content}" class="apple-input mt-2" rows="3" placeholder="댓글 내용" required></textarea>
+        <button type="submit" class="apple-btn-primary mt-2">등록</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const isAdmin = document.querySelector('meta[name="isAdmin"]')?.content === 'true';
+        const questionId = /*[[${question.id}]]*/ 0;
+
+        // 게시글 삭제
+        const deleteBtn = document.getElementById('deleteQuestionBtn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function() {
+                if (isAdmin) {
+                    if (!confirm('정말 삭제하시겠습니까?')) return;
+                    fetch(`/admin/questions/${questionId}`, { method: 'DELETE' })
+                        .then(res => { if (res.ok) location.href = '/'; });
+                } else {
+                    const email = prompt("작성자 이메일을 입력해주세요:");
+                    if (!email) return;
+                    const password = prompt("비밀번호를 입력해주세요:");
+                    if (!password) return;
+                    fetch(`/api/questions/${questionId}`, {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({authorEmail: email, password: password})
+                    })
+                        .then(res => {
+                            if (res.ok) location.href = '/';
+                            else alert("이메일 또는 비밀번호가 올바르지 않습니다.");
+                        });
+                }
+            });
+        }
+
+        // 댓글 삭제
+        document.querySelectorAll('.delete-comment-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                if (isAdmin) {
+                    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+                    fetch(`/admin/comments/${commentId}`, { method: 'DELETE' })
+                        .then(res => { if (res.ok) location.reload(); });
+                } else {
+                    const password = prompt("댓글 작성 시 입력한 비밀번호를 입력해주세요:");
+                    if (!password) return;
+                    fetch(`/api/comments/${commentId}`, {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({password: password})
+                    })
+                        .then(res => {
+                            if (res.ok) location.reload();
+                            else alert("비밀번호가 올바르지 않습니다.");
+                        });
+                }
+            });
+        });
+
+        // 좋아요
+        const likeBtn = document.getElementById('likeBtn');
+        if (likeBtn) {
+            fetch(`/api/questions/${questionId}/like/count`)
+                .then(res => res.json())
+                .then(data => document.getElementById('likeCount').textContent = data.likeCount);
+
+            likeBtn.addEventListener('click', function() {
+                const email = prompt("이메일을 입력해주세요:");
+                if (!email) return;
+                fetch(`/api/questions/${questionId}/like`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userEmail: email})
+                })
+                    .then(res => res.json())
+                    .then(data => document.getElementById('likeCount').textContent = data.likeCount);
+            });
+        }
+
+        // 관리자 답변 등록
+        const adminAnswerForm = document.getElementById('adminAnswerForm');
+        if (adminAnswerForm) {
+            adminAnswerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const content = document.getElementById('answerContent').value;
+                fetch(`/admin/questions/${questionId}/answer`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: content})
+                })
+                    .then(res => {
+                        if (res.ok) location.reload();
+                        else alert('답변 등록에 실패했습니다.');
+                    });
+            });
+        }
+
+        // 관리자 답변 수정
+        document.querySelectorAll('.adminAnswerEditForm').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const answerId = this.getAttribute('data-answer-id');
+                const content = this.querySelector('.edit-answer-content').value;
+                fetch(`/admin/answers/${answerId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: content})
+                })
+                    .then(res => {
+                        if (res.ok) location.reload();
+                        else alert('답변 수정에 실패했습니다.');
+                    });
+            });
+        });
+    });
+</script>
+</html>

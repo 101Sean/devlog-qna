@@ -15,7 +15,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     // 공개 질문 목록 (태그 필터, 페이징)
     @Query("SELECT DISTINCT q FROM Question q LEFT JOIN q.questionTags qt " +
-            "WHERE q.isSecret = false AND (:tag IS NULL OR qt.tag.name = :tag) " +
+            "WHERE (:tag IS NULL OR qt.tag.name = :tag) " +
             "ORDER BY q.createdAt DESC")
     Page<Question> findPublicQuestions(@Param("tag") String tag, Pageable pageable);
 

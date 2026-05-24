@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+  <div class="apple-card" style="max-width: 400px; margin: 3rem auto;">
+    <h2 class="apple-card-title text-center">관리자 로그인</h2>
+    <form th:action="@{/admin/login}" method="post">
+      <input type="text" name="username" class="apple-input" placeholder="아이디" required>
+      <input type="password" name="password" class="apple-input mt-2" placeholder="비밀번호" required>
+      <button type="submit" class="apple-btn-primary mt-3 w-100">로그인</button>
+    </form>
+    <div th:if="${param.error}" class="alert alert-danger mt-3">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+  </div>
+</div>
+</html>

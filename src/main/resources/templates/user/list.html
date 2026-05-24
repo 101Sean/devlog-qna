@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+  <div class="apple-section">
+    <h2 class="apple-heading">질문 목록</h2>
+
+    <!-- 태그 필터 -->
+    <div class="filter-tags">
+      <a th:href="@{/(tag='')}" class="filter-tag">전체</a>
+      <a th:each="tag : ${tags}" th:href="@{/(tag=${tag.name})}"
+         class="filter-tag" th:text="${tag.name}"></a>
+    </div>
+
+    <!-- 질문 카드 리스트 -->
+    <div class="question-card-list">
+      <div th:each="q : ${questions.content}"
+           th:classappend="${q.isSecret} ? 'secret' : ''" class="question-card">
+
+        <!-- 왼쪽: 제목 + 태그 -->
+        <div class="question-card-body" th:data-secret="${q.isSecret}" th:data-id="${q.id}">
+          <a th:href="@{/questions/{id}(id=${q.id})}" class="question-title" th:text="${q.title}"></a>
+          <div class="question-tags">
+            <span th:each="tag : ${q.tags}" class="tag-badge" th:text="${tag}"></span>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 이메일 + 아이콘들 -->
+        <div class="question-meta">
+          <!-- 첫 줄: 자물쇠(비밀글일 때만) + 이메일 -->
+          <div class="d-flex align-items-center justify-content-end mb-1">
+            <span th:if="${q.isSecret}" class="question-icon me-1" title="비밀글">🔒</span>
+            <span class="text-muted small" th:text="${q.authorEmail}"></span>
+          </div>
+          <!-- 둘째 줄: 조회수 + 좋아요 -->
+          <div class="question-icons">
+            <span><i class="bi bi-heart"></i> <span th:text="${q.likeCount}">0</span></span>
+            <span><i class="bi bi-eye"></i> <span th:text="${q.viewCount}">0</span></span>
+            <span><i class="bi bi-clock"></i> <span th:text="${#temporals.format(q.createdAt, 'yyyy-MM-dd')}"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // 서버에서 전달받은 관리자 여부
+    const isAdmin = /*[[${isAdmin}]]*/ false;
+
+    document.querySelectorAll('.secret-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const questionId = this.getAttribute('data-id');
+
+            // 관리자라면 비밀번호 없이 바로 상세 페이지로 이동
+            if (isAdmin) {
+                window.location.href = `/questions/${questionId}`;
+                return;
+            }
+
+            // 작성자 이메일 가져오기
+            fetch(`/api/questions/${questionId}/author-email`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to fetch email');
+                    return res.text();
+                })
+                .then(email => {
+                    // 비밀번호만 입력받기 (이메일은 이미 알고 있음)
+                    const password = prompt("비밀번호를 입력해주세요:");
+                    if (!password) return;
+
+                    // 언락 API 호출
+                    return fetch(`/api/questions/${questionId}/unlock`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ email: email, password: password })
+                    });
+                })
+                .then(res => {
+                    if (res && res.ok) {
+                        window.location.href = `/questions/${questionId}`;
+                    } else if (res) {
+                        alert("비밀번호가 올바르지 않습니다.");
+                    }
+                })
+                .catch(err => alert("오류가 발생했습니다: " + err.message));
+        });
+    });
+</script>
+</html>

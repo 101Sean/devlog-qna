@@ -1,0 +1,33 @@
+<!-- templates/user/form.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+  <div class="apple-card" style="max-width: 700px; margin: 0 auto;">
+    <h2 class="apple-card-title">질문 등록</h2>
+
+    <form th:action="@{/questions/new}" method="post" th:object="${questionRequest}">
+      <input type="text" th:field="*{title}" class="apple-input" placeholder="제목" required>
+      <textarea th:field="*{content}" class="apple-input mt-2" rows="5" placeholder="내용" required></textarea>
+      <input type="text" th:field="*{tags}" class="apple-input mt-2" placeholder="태그 (쉼표로 구분)">
+      <input type="email" th:field="*{authorEmail}" class="apple-input mt-2" placeholder="이메일" required>
+      <input type="password" th:field="*{password}" class="apple-input mt-2" placeholder="비밀번호 (수정/삭제 시 필요)" required>
+      <div class="d-flex gap-4 mt-2">
+        <!-- 비밀글 여부 -->
+        <div class="form-check">
+          <input type="checkbox" th:field="*{isSecret}" class="form-check-input" id="secretCheck">
+          <label class="form-check-label" for="secretCheck">비밀글</label>
+        </div>
+
+        <!-- 이메일 알림 수신 동의 -->
+        <div class="form-check">
+          <input type="checkbox" th:field="*{notifyEmail}" class="form-check-input" id="notifyCheck">
+          <label class="form-check-label" for="notifyCheck">이메일 알림 받기</label>
+        </div>
+      </div>
+      <button type="submit" class="apple-btn-primary mt-3">등록</button>
+    </form>
+  </div>
+</div>
+</html>

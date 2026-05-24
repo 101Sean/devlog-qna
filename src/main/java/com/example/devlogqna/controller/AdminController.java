@@ -1,5 +1,6 @@
 package com.example.devlogqna.controller;
 
+import org.springframework.ui.Model;
 import com.example.devlogqna.dto.request.AnswerRequest;
 import com.example.devlogqna.dto.request.StatusRequest;
 import com.example.devlogqna.dto.request.TagRequest;

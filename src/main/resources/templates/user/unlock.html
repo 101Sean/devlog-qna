@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+  <div class="apple-card" style="max-width: 400px; margin: 3rem auto;">
+    <h2 class="apple-card-title">비밀글 열람</h2>
+    <p class="text-muted">"<span th:text="${questionTitle}">질문 제목</span>"</p>
+
+    <form th:action="@{/questions/{id}/unlock(id=${questionId})}" method="post">
+      <div class="mb-3">
+        <label class="form-label">비밀번호</label>
+        <input type="password" name="password" class="apple-input"
+               placeholder="비밀번호를 입력하세요" required autofocus>
+      </div>
+      <button type="submit" class="apple-btn-primary w-100">확인</button>
+    </form>
+
+    <!-- 오류 메시지 (비밀번호 불일치 시) -->
+    <div th:if="${param.error}" class="alert alert-danger mt-3">
+      비밀번호가 올바르지 않습니다.
+    </div>
+  </div>
+</div>
+</html>

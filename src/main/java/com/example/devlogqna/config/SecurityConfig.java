@@ -4,6 +4,7 @@ import com.example.devlogqna.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -24,32 +25,56 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // Web 화면용 보안 필터 체인 (세션 기반)
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
+                .securityMatcher("/", "/questions/**", "/admin/**", "/css/**", "/js/**", "/images/**", "/webjars/**")
+                .csrf(AbstractHttpConfigurer::disable) // 필요 시 CSRF 활성화 가능
+                .authorizeHttpRequests(auth -> auth
+                        // 정적 리소스와 사용자 페이지는 모두 허용
+                        .requestMatchers("/", "/questions/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                        .requestMatchers("/admin/login", "/admin/logout").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/admin/login")
+                        .loginProcessingUrl("/admin/login")
+                        .defaultSuccessUrl("/admin/dashboard", true)
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/admin/logout")
+                        .logoutSuccessUrl("/admin/login?logout")
+                        .permitAll()
+                );
+
+        return http.build();
+    }
+
+    // REST API + Swagger + Actuator (JWT 인증)
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public API
                         .requestMatchers(
-                                "/api/questions/**",    // 질문 조회/등록/수정/삭제 (비밀번호 검증은 서비스에서 처리)
-                                "/api/comments/**",     // 댓글 조회/등록/삭제
-                                "/api/tags",           // 태그 목록
-                                "/api/auth/login",     // 로그인
-                                "/api/auth/refresh"    // 토큰 갱신
-                        ).permitAll()
-                        // Admin API
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Swagger / Actuator
-                        .requestMatchers(
+                                "/api/questions/**",
+                                "/api/comments/**",
+                                "/api/tags",
+                                "/api/auth/login",
+                                "/api/auth/refresh",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/actuator/**"
                         ).permitAll()
-                        // Thymeleaf static resources
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-                        // 그 외 모든 요청은 인증 필요
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
