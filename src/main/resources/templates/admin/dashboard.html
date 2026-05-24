@@ -5,12 +5,20 @@
 <div layout:fragment="content">
   <div class="apple-section">
     <h2 class="apple-heading">질문 관리</h2>
+
+    <!-- 선택 삭제 버튼 -->
+    <div class="mb-3">
+      <button id="deleteSelectedBtn" class="apple-btn-danger">선택 삭제</button>
+    </div>
+
     <table class="apple-table">
       <thead>
       <tr>
+        <th><input type="checkbox" id="selectAllCheckbox" title="전체 선택"></th>
         <th>ID</th>
         <th>제목</th>
         <th>작성자</th>
+        <th>비밀글</th>
         <th>상태</th>
         <th>좋아요</th>
         <th>관리</th>
@@ -18,9 +26,16 @@
       </thead>
       <tbody>
       <tr th:each="q : ${questions.content}">
+        <td><input type="checkbox" class="question-checkbox" th:value="${q.id}"></td>
         <td th:text="${q.id}">1</td>
-        <td><a th:href="@{/questions/{id}(id=${q.id})}" th:text="${q.title}"></a></td>
+        <td>
+          <a th:href="@{/questions/{id}(id=${q.id})}" th:text="${q.title}" class="text-decoration-none"></a>
+        </td>
         <td th:text="${q.authorEmail}">email</td>
+        <td>
+          <span th:if="${q.isSecret}" class="text-warning" title="비밀글">🔒</span>
+          <span th:unless="${q.isSecret}" class="text-muted">일반</span>
+        </td>
         <td>
                         <span class="status-badge" th:classappend="'status-' + ${q.status.name().toLowerCase()}"
                               th:text="${q.status}">OPEN</span>
@@ -28,18 +43,82 @@
         <td th:text="${q.likeCount}">0</td>
         <td>
           <a th:href="@{/admin/questions/{id}(id=${q.id})}" class="apple-btn-secondary-sm">답변</a>
-          <button class="apple-btn-danger-sm" onclick="deleteQuestion(/*[[${q.id}]]*/)">삭제</button>
+          <button class="apple-btn-danger-sm delete-single-btn" th:data-question-id="${q.id}">삭제</button>
         </td>
       </tr>
       </tbody>
     </table>
   </div>
+
+  <script>
+      var isAdmin = document.querySelector('meta[name="isAdmin"]')?.content === 'true';
+
+      document.addEventListener('DOMContentLoaded', function() {
+          console.log("대시보드 DOM 로드 완료. isAdmin:", isAdmin);
+
+          var selectAllCheckbox = document.getElementById('selectAllCheckbox');
+          var questionCheckboxes = document.querySelectorAll('.question-checkbox');
+
+          if (selectAllCheckbox) {
+              selectAllCheckbox.addEventListener('change', function() {
+                  var checked = this.checked;
+                  questionCheckboxes.forEach(function(cb) {
+                      cb.checked = checked;
+                  });
+              });
+          }
+
+          var deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+          if (deleteSelectedBtn) {
+              deleteSelectedBtn.addEventListener('click', function() {
+                  var selectedIds = [];
+                  questionCheckboxes.forEach(function(cb) {
+                      if (cb.checked) {
+                          selectedIds.push(cb.value);
+                      }
+                  });
+
+                  if (selectedIds.length === 0) {
+                      alert('삭제할 질문을 선택해주세요.');
+                      return;
+                  }
+
+                  if (!confirm('선택한 ' + selectedIds.length + '개의 질문을 정말 삭제하시겠습니까?')) {
+                      return;
+                  }
+
+                  // ids를 콤마로 연결하여 쿼리 파라미터로 전달
+                  var idsParam = selectedIds.join(',');
+                  fetch('/admin/questions?ids=' + encodeURIComponent(idsParam), {
+                      method: 'DELETE'
+                  })
+                      .then(function(res) {
+                          if (res.ok) {
+                              location.reload();
+                          } else {
+                              alert('삭제에 실패했습니다.');
+                          }
+                      });
+              });
+          }
+
+          document.querySelectorAll('.delete-single-btn').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                  var questionId = this.getAttribute('data-question-id');
+                  if (!confirm('정말 삭제하시겠습니까?')) return;
+                  fetch('/admin/questions/' + questionId, {
+                      method: 'DELETE'
+                  })
+                      .then(function(res) {
+                          if (res.ok) {
+                              location.reload();
+                          } else {
+                              alert('삭제에 실패했습니다.');
+                          }
+                      });
+              });
+          });
+      });
+  </script>
 </div>
-<script>
-    function deleteQuestion(id) {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
-        fetch(`/api/admin/questions/${id}`, { method: 'DELETE' })
-            .then(res => { if (res.ok) location.reload(); });
-    }
-</script>
 </html>

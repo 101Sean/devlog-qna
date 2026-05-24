@@ -24,6 +24,13 @@ public class TagService {
                 .collect(Collectors.toList());
     }
 
+    public List<TagResponse> getActiveTags() {
+        return tagRepository.findTagsUsedInPublicQuestions()
+                .stream()
+                .map(tag -> new TagResponse(tag.getId(), tag.getName()))
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public TagResponse createTag(TagRequest request) {
         Tag tag = tagRepository.save(new Tag(request.getName()));

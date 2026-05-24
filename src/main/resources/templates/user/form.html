@@ -28,6 +28,23 @@
       </div>
       <button type="submit" class="apple-btn-primary mt-3">등록</button>
     </form>
+
+    <script>
+        // 저장된 이메일 불러오기
+        var savedEmail = localStorage.getItem('devlog_email');
+        if (savedEmail) {
+            var emailInput = document.querySelector('input[name="authorEmail"]');
+            if (emailInput) emailInput.value = savedEmail;
+        }
+
+        // 폼 제출 시 이메일 저장
+        document.querySelector('form').addEventListener('submit', function() {
+            var emailInput = document.querySelector('input[name="authorEmail"]');
+            if (emailInput && emailInput.value) {
+                localStorage.setItem('devlog_email', emailInput.value);
+            }
+        });
+    </script>
   </div>
 </div>
 </html>

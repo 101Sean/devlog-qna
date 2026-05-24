@@ -197,6 +197,7 @@ body {
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
+  font-size: .85em;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .apple-table th, .apple-table td {
@@ -374,4 +375,28 @@ body {
   background: #fafafa;
   border-radius: 12px;
   padding: 16px;
+}
+
+.question-card.secret .tag-badge {
+  background: #d9d9e3;
+  color: #444;
+}
+
+.question-card.answered {
+  position: relative;
+  overflow: hidden;
+}
+.question-card.answered::after {
+  content: "답변완료";
+  position: absolute;
+  top: 8px;
+  right: -32px;
+  background: #007aff;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 36px;
+  transform: rotate(45deg);
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }

@@ -21,6 +21,7 @@ public class QuestionListResponse {
     private Long likeCount;
     private String authorEmail;
     private Boolean isSecret;
+    private boolean adminAnswered;
     private List<String> tags;
     private LocalDateTime createdAt;
 }

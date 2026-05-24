@@ -36,7 +36,7 @@ public class UserPageController {
                                 @RequestParam(required = false) String tag,
                                 Model model) {
         QuestionPageResponse questions = questionService.getPublicQuestions(page, tag);
-        List<TagResponse> tags = tagService.getAllTags();
+        List<TagResponse> tags = tagService.getActiveTags();
 
         // 관리자 여부 확인하여 모델에 추가
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -69,6 +69,8 @@ public class UserPageController {
 
         model.addAttribute("isAdmin", isAdmin);
 
+        questionService.incrementViewCount(id);
+
         Set<Long> unlockedQuestions = (Set<Long>) session.getAttribute("unlockedQuestions");
         boolean isUnlocked = unlockedQuestions != null && unlockedQuestions.contains(id);
 
@@ -100,6 +102,7 @@ public class UserPageController {
         model.addAttribute("comments", comments);
         model.addAttribute("answers", answers);
         model.addAttribute("commentRequest", new CommentRequest()); // 댓글 폼용
+
         return "user/detail";
     }
 
@@ -117,16 +120,21 @@ public class UserPageController {
     public String processUnlock(@PathVariable Long id,
                                 @RequestParam("password") String rawPassword,
                                 HttpSession session) {
-        QuestionResponse question = questionService.unlockSecretQuestion(id, rawPassword);
+        try {
+            QuestionResponse question = questionService.unlockSecretQuestion(id, rawPassword);
 
-        Set<Long> unlockedQuestions = (Set<Long>) session.getAttribute("unlockedQuestions");
-        if (unlockedQuestions == null) {
-            unlockedQuestions = new HashSet<>();
+            // 성공 시 세션에 저장하고 상세 페이지로 이동
+            Set<Long> unlockedQuestions = (Set<Long>) session.getAttribute("unlockedQuestions");
+            if (unlockedQuestions == null) {
+                unlockedQuestions = new HashSet<>();
+            }
+            unlockedQuestions.add(id);
+            session.setAttribute("unlockedQuestions", unlockedQuestions);
+
+            return "redirect:/questions/" + id;
+        } catch (IllegalArgumentException e) {
+            return "redirect:/questions/" + id + "/unlock?error";
         }
-        unlockedQuestions.add(id);
-        session.setAttribute("unlockedQuestions", unlockedQuestions);
-
-        return "redirect:/questions/" + id;
     }
 
     @PostMapping("/questions/{id}/comments/new")

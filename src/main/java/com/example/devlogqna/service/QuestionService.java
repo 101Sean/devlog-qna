@@ -2,7 +2,6 @@ package com.example.devlogqna.service;
 
 import com.example.devlogqna.dto.request.QuestionRequest;
 import com.example.devlogqna.dto.request.QuestionUpdateRequest;
-import com.example.devlogqna.dto.request.UnlockRequest;
 import com.example.devlogqna.dto.response.QuestionListResponse;
 import com.example.devlogqna.dto.response.QuestionPageResponse;
 import com.example.devlogqna.dto.response.QuestionResponse;
@@ -10,20 +9,22 @@ import com.example.devlogqna.entity.Question;
 import com.example.devlogqna.entity.QuestionStatus;
 import com.example.devlogqna.entity.QuestionTag;
 import com.example.devlogqna.entity.Tag;
-import com.example.devlogqna.repository.AnswerRepository;
 import com.example.devlogqna.repository.QuestionRepository;
 import com.example.devlogqna.repository.QuestionTagRepository;
 import com.example.devlogqna.repository.TagRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,18 +36,11 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final TagRepository tagRepository;
     private final QuestionTagRepository questionTagRepository;
-    private final AnswerRepository answerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate redisTemplate;
+    private final HttpServletRequest httpServletRequest;
 
     // 공개 질문 목록 (캐시 적용)
-    /*
-    @Cacheable(value = "publicQuestions", key = "'page:' + #page + ':tag:' + (#tag != null ? #tag : 'all')")
-    public Page<QuestionListResponse> getPublicQuestions(int page, String tag) {
-        PageRequest pageRequest = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Question> questions = questionRepository.findPublicQuestions(tag, pageRequest);
-        return questions.map(this::toListResponse);
-    }*/
-
     @Cacheable(value = "publicQuestions", key = "'page:' + #page + ':tag:' + (#tag != null ? #tag : 'all')")
     public QuestionPageResponse getPublicQuestions(int page, String tag) {
         if (tag != null && tag.isBlank()) {
@@ -162,7 +156,18 @@ public class QuestionService {
         if (!passwordEncoder.matches(rawPassword, question.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid password");
         }
+
+        List<Tag> tagsToCheck = question.getQuestionTags().stream()
+                .map(QuestionTag::getTag)
+                .toList();
+
         questionRepository.delete(question);
+
+        for (Tag tag : tagsToCheck) {
+            if (questionTagRepository.existsByTagId(tag.getId())) {
+                tagRepository.delete(tag);
+            }
+        }
     }
 
     // 관리자 전용 전체 질문 조회 (비밀글 포함)
@@ -186,7 +191,20 @@ public class QuestionService {
     @Transactional
     @CacheEvict(value = {"publicQuestions", "questionDetail"}, allEntries = true)
     public void adminDeleteQuestion(Long id) {
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+
+        List<Tag> tagsToCheck = question.getQuestionTags().stream()
+                .map(QuestionTag::getTag)
+                .toList();
+
         questionRepository.deleteById(id);
+
+        for (Tag tag : tagsToCheck) {
+            if (questionTagRepository.existsByTagId(tag.getId())) {
+                tagRepository.delete(tag);
+            }
+        }
     }
 
     // 비밀글 열람
@@ -203,8 +221,6 @@ public class QuestionService {
         }
         return toResponse(question, true, question.getAuthorEmail());
     }
-
-    // 조회수 증가 (Redis에서 처리할 예정이므로 여기서는 생략, 나중에 스케줄러로 일괄 반영)
 
     // 이메일 마스킹 함수
     private String maskEmail(String email) {
@@ -232,13 +248,26 @@ public class QuestionService {
         return toResponse(question, true, null);
     }
 
+    // 조회수 증가 (동일 IP 30분)
+    public void incrementViewCount(Long questionId) {
+        String ip = httpServletRequest.getRemoteAddr();
+        String duplicateKey = "qna:view:ip:" + questionId + ":" + ip;
+
+        Boolean isNewView = redisTemplate.opsForValue()
+                .setIfAbsent(duplicateKey, "1", Duration.ofMinutes(30));
+
+        if (Boolean.TRUE.equals(isNewView)) {
+            redisTemplate.opsForValue().increment("qna:question:views:" + questionId);
+        }
+    }
+
     // DTO 변환
     private QuestionResponse toResponse(Question question, boolean isAuthor, String requestEmail) {
         List<String> tagNames = question.getQuestionTags().stream()
                 .map(qt -> qt.getTag().getName())
                 .collect(Collectors.toList());
 
-        long likeCount = question.getLikes().size();  // Like 리스트 크기 (별도 레포지토리 쿼리 가능)
+        long likeCount = redisTemplate.opsForSet().size("qna:question:likes:" + question.getId());
 
         return QuestionResponse.builder()
                 .id(question.getId())
@@ -274,6 +303,7 @@ public class QuestionService {
                 .likeCount(likeCount)
                 .authorEmail(maskedEmail)
                 .isSecret(question.getIsSecret())
+                .adminAnswered(question.getAdminAnswered())
                 .tags(tagNames)
                 .createdAt(question.getCreatedAt())
                 .build();

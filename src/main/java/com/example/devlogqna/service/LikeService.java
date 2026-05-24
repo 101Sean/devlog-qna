@@ -3,19 +3,16 @@ package com.example.devlogqna.service;
 import com.example.devlogqna.dto.request.LikeRequest;
 import com.example.devlogqna.dto.response.LikeResponse;
 import com.example.devlogqna.entity.Question;
-import com.example.devlogqna.entity.QuestionLike;
-import com.example.devlogqna.repository.QuestionLikeRepository;
 import com.example.devlogqna.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class LikeService {
 
-    private final QuestionLikeRepository likeRepository;
+    private final StringRedisTemplate redisTemplate;
     private final QuestionRepository questionRepository;
 
     public LikeResponse toggleLike(Long questionId, LikeRequest request) {
@@ -26,25 +23,22 @@ public class LikeService {
         }
 
         String email = request.getUserEmail();
-        return likeRepository.findByQuestionIdAndUserEmail(questionId, email)
-                .map(like -> {
-                    likeRepository.delete(like);
-                    long count = likeRepository.countByQuestionId(questionId);
-                    return new LikeResponse(questionId, count);
-                })
-                .orElseGet(() -> {
-                    QuestionLike newLike = QuestionLike.builder()
-                            .question(question)
-                            .userEmail(email)
-                            .build();
-                    likeRepository.save(newLike);
-                    long count = likeRepository.countByQuestionId(questionId);
-                    return new LikeResponse(questionId, count);
-                });
+        String key = "qna:question:likes:" + questionId;
+
+        Boolean alreadyLiked = redisTemplate.opsForSet().isMember(key, email);
+        if (Boolean.TRUE.equals(alreadyLiked)) {
+            redisTemplate.opsForSet().remove(key, email);
+        } else {
+            redisTemplate.opsForSet().add(key, email);
+        }
+
+        long likeCount = redisTemplate.opsForSet().size(key);
+        return new LikeResponse(questionId, likeCount);
     }
 
     public LikeResponse getLikeCount(Long questionId) {
-        long count = likeRepository.countByQuestionId(questionId);
+        String key = "qna:question:likes:" + questionId;
+        long count = redisTemplate.opsForSet().size(key);
         return new LikeResponse(questionId, count);
     }
 }

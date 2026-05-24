@@ -94,6 +94,11 @@ public class Question extends BaseTimeEntity {
         this.status = QuestionStatus.IN_PROGRESS;
     }
 
+    public void markUnanswered() {
+        this.adminAnswered = false;
+        this.status = QuestionStatus.OPEN;
+    }
+
     public void changeStatus(QuestionStatus status) {
         this.status = status;
     }

@@ -16,7 +16,7 @@
     <!-- 질문 카드 리스트 -->
     <div class="question-card-list">
       <div th:each="q : ${questions.content}"
-           th:classappend="${q.isSecret} ? 'secret' : ''" class="question-card">
+           th:class="'question-card' + (${q.isSecret} ? ' secret' : '') + (${q.adminAnswered} ? ' answered' : '')">
 
         <!-- 왼쪽: 제목 + 태그 -->
         <div class="question-card-body" th:data-secret="${q.isSecret}" th:data-id="${q.id}">

@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
@@ -44,6 +45,16 @@ public class AdminPageController {
         return ResponseEntity.noContent().build();
     }
 
+    // 여러 질문 삭제 (체크박스 선택 후 일괄 삭제)
+    @DeleteMapping("/admin/questions")
+    @ResponseBody
+    public ResponseEntity<Void> deleteQuestions(@RequestParam("ids") List<Long> ids) {
+        for (Long id : ids) {
+            questionService.adminDeleteQuestion(id);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     // 답변 등록
     @PostMapping("/admin/questions/{id}/answer")
     @ResponseBody
@@ -61,11 +72,24 @@ public class AdminPageController {
         return ResponseEntity.ok(answerService.updateAnswer(id, request));
     }
 
+    // 답변 삭제
+    @DeleteMapping("/admin/answers/{id}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteAnswer(@PathVariable Long id) {
+        answerService.deleteAnswer(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // 댓글 삭제
     @DeleteMapping("/admin/comments/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
         commentService.adminDeleteComment(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/admin/questions/{id}")
+    public String adminQuestionDetail(@PathVariable Long id, Model model) {
+        return "redirect:/questions/" + id;
     }
 }

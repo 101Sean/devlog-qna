@@ -4,17 +4,20 @@ import com.example.devlogqna.dto.request.AnswerRequest;
 import com.example.devlogqna.dto.response.AnswerResponse;
 import com.example.devlogqna.entity.Answer;
 import com.example.devlogqna.entity.Question;
+import com.example.devlogqna.entity.QuestionStatus;
 import com.example.devlogqna.entity.User;
 import com.example.devlogqna.repository.AnswerRepository;
 import com.example.devlogqna.repository.QuestionRepository;
 import com.example.devlogqna.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +29,7 @@ public class AnswerService {
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;  // Pub/Sub 용
+    private final CacheManager cacheManager;
 
     // 특정 질문의 답변 목록
     public List<AnswerResponse> getAnswersByQuestion(Long questionId) {
@@ -66,21 +70,36 @@ public class AnswerService {
 
     // 답변 수정
     @Transactional
-    @CacheEvict(value = {"questionDetail"}, key = "#questionId")
     public AnswerResponse updateAnswer(Long answerId, AnswerRequest request) {
         Answer answer = answerRepository.findById(answerId)
                 .orElseThrow(() -> new IllegalArgumentException("Answer not found"));
         answer.update(request.getContent());
+
+        // 연관된 질문 ID를 가져와서 캐시 무효화
+        Long questionId = answer.getQuestion().getId();
+        Objects.requireNonNull(cacheManager.getCache("questionDetail")).evict(questionId);
+
         return toResponse(answer);
     }
 
     // 답변 삭제
     @Transactional
-    @CacheEvict(value = {"questionDetail"}, key = "#questionId")
     public void deleteAnswer(Long answerId) {
         Answer answer = answerRepository.findById(answerId)
                 .orElseThrow(() -> new IllegalArgumentException("Answer not found"));
+
+        Question question = answer.getQuestion();
+        Long questionId = question.getId();
+
         answerRepository.delete(answer);
+
+        if (answerRepository.countByQuestionId(questionId) == 0) {
+            question.markUnanswered();
+            questionRepository.save(question);
+        }
+
+        Objects.requireNonNull(cacheManager.getCache("questionDetail")).evict(questionId);
+        Objects.requireNonNull(cacheManager.getCache("publicQuestions")).clear();
     }
 
     private AnswerResponse toResponse(Answer answer) {
