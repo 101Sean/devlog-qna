@@ -24,6 +24,7 @@ public class LikeService {
 
         String email = request.getUserEmail();
         String key = "qna:question:likes:" + questionId;
+        System.out.println("DEBUG: key=" + key + ", size=" + redisTemplate.opsForSet().size(key));
 
         Boolean alreadyLiked = redisTemplate.opsForSet().isMember(key, email);
         if (Boolean.TRUE.equals(alreadyLiked)) {

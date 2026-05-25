@@ -14,14 +14,6 @@ body {
   border-bottom: 1px solid rgba(0,0,0,0.1);
   z-index: 1000;
 }
-.apple-nav-inner {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 10px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 .apple-brand {
   font-size: 1.2rem;
   font-weight: 600;
@@ -41,8 +33,18 @@ body {
 
 .main-content {
   max-width: 1000px;
+  width: 100%;
   margin: 30px auto;
   padding: 0 20px;
+}
+.apple-nav-inner {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .apple-card {
@@ -399,4 +401,72 @@ body {
   transform: rotate(45deg);
   letter-spacing: 0.5px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 0 10px;
+  }
+
+  .apple-nav-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .apple-nav-links a {
+    margin-left: 0;
+    margin-right: 15px;
+    font-size: 0.9rem;
+  }
+
+  .apple-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .apple-card-title {
+    font-size: 1.3rem;
+  }
+
+  .question-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .question-meta {
+    align-items: flex-start;
+    margin-top: 10px;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .apple-table {
+    font-size: 0.7rem;
+  }
+  .apple-table th, .apple-table td {
+    padding: 6px 4px;
+  }
+
+  .detail-actions {
+    flex-wrap: wrap;
+  }
+
+  .comment-form .row > div {
+    margin-bottom: 10px;
+  }
+
+  .answer-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .filter-tag {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+  }
 }

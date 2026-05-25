@@ -19,6 +19,7 @@ public class QuestionListResponse {
     private QuestionStatus status;
     private Long viewCount;
     private Long likeCount;
+    private Long commentCount;
     private String authorEmail;
     private Boolean isSecret;
     private boolean adminAnswered;

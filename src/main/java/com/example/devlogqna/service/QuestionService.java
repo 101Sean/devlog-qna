@@ -9,6 +9,7 @@ import com.example.devlogqna.entity.Question;
 import com.example.devlogqna.entity.QuestionStatus;
 import com.example.devlogqna.entity.QuestionTag;
 import com.example.devlogqna.entity.Tag;
+import com.example.devlogqna.repository.CommentRepository;
 import com.example.devlogqna.repository.QuestionRepository;
 import com.example.devlogqna.repository.QuestionTagRepository;
 import com.example.devlogqna.repository.TagRepository;
@@ -39,6 +40,7 @@ public class QuestionService {
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
     private final HttpServletRequest httpServletRequest;
+    private final CommentRepository commentRepository;
 
     // 공개 질문 목록 (캐시 적용)
     @Cacheable(value = "publicQuestions", key = "'page:' + #page + ':tag:' + (#tag != null ? #tag : 'all')")
@@ -291,8 +293,9 @@ public class QuestionService {
                 .map(qt -> qt.getTag().getName())
                 .collect(Collectors.toList());
 
-        long likeCount = question.getLikes().size();
+        long likeCount = redisTemplate.opsForSet().size("qna:question:likes:" + question.getId());
         String maskedEmail = maskEmail(question.getAuthorEmail());
+        long commentCount = commentRepository.countByQuestionId(question.getId());
 
         return QuestionListResponse.builder()
                 .id(question.getId())
@@ -301,6 +304,7 @@ public class QuestionService {
                 .status(question.getStatus())
                 .viewCount(question.getViewCount())
                 .likeCount(likeCount)
+                .commentCount(commentCount)
                 .authorEmail(maskedEmail)
                 .isSecret(question.getIsSecret())
                 .adminAnswered(question.getAdminAnswered())
