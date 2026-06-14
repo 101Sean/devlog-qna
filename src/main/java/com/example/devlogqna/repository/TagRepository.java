@@ -13,7 +13,9 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     @Query("SELECT DISTINCT t FROM Tag t " +
             "JOIN QuestionTag qt ON qt.tag.id = t.id " +
             "JOIN Question q ON qt.question.id = q.id " +
-            "WHERE q.isSecret = false")
+            "WHERE q.isSecret = false " +
+            "GROUP BY t.id " +
+            "ORDER BY COUNT(qt) DESC")
     List<Tag> findTagsUsedInPublicQuestions();
 
     boolean existsByName(String name);

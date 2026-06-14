@@ -30,13 +30,14 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/", "/questions/**", "/admin/**", "/css/**", "/js/**", "/images/**", "/webjars/**")
-                .csrf(AbstractHttpConfigurer::disable) // 필요 시 CSRF 활성화 가능
+                .securityMatcher("/", "/questions/**", "/admin/**", "/css/**", "/js/**", "/images/**", "/webjars/**",
+                        "/ws-chat/**", "/chat/**", "/api/chat/**")
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 정적 리소스와 사용자 페이지는 모두 허용
                         .requestMatchers("/", "/questions/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                        .requestMatchers("/ws-chat/**", "/chat/**", "/api/chat/**").permitAll()
                         .requestMatchers("/admin/login", "/admin/logout").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**", "/admin/chat/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

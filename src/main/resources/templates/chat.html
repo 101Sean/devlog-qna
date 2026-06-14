@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>실시간 QnA - DevlogQnA</title>
+  <!-- Bootstrap + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/board.css">
+</head>
+<body>
+<nav class="apple-nav">
+  <div class="apple-nav-inner">
+    <a class="apple-brand" href="/">💬 DevlogQnA</a>
+    <div class="apple-nav-links">
+      <a href="/questions/new">질문 등록</a>
+      <a href="/chat">실시간 QnA</a>
+      <span sec:authorize="!isAuthenticated()">
+          <a href="/admin/login" class="apple-btn-secondary">로그인</a>
+        </span>
+      <span sec:authorize="isAuthenticated()">
+          <a href="/admin">관리</a>
+          <a href="/admin/logout" class="apple-btn-secondary">로그아웃</a>
+        </span>
+    </div>
+  </div>
+</nav>
+
+<div class="container main-content">
+  <div class="apple-card">
+    <h2 class="apple-heading">실시간 QnA</h2>
+    <div id="chat-messages" class="chat-container" style="height:550px; overflow-y:auto; background:#f9f9f9; padding:12px; border-radius:12px;">
+      <!-- 메시지 동적 표시 -->
+    </div>
+    <div class="input-group mt-3">
+      <input type="text" id="message-input" class="apple-input" placeholder="메시지를 입력하세요...">
+      <button id="send-button" class="apple-btn-primary ms-2">전송</button>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+    var isAdmin = /*[[${isAdmin}]]*/ false;
+    var myJSessionId = /*[[${jsessionId}]]*/ '';
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+    var stompClient = null;
+    var roomId = "main";
+    var lastBanButtonElements = {};
+
+    function connect() {
+        var socket = new SockJS('/ws-chat');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            stompClient.subscribe('/topic/room/' + roomId, function(message) {
+                var msg = JSON.parse(message.body);
+                if (msg.sender === '시스템' && msg.sessionId !== myJSessionId) {
+                    return;
+                }
+                showMessage(msg);
+            });
+            loadHistory();
+        });
+    }
+
+    function sendMessage() {
+        var input = document.getElementById('message-input');
+        var content = input.value.trim();
+        if (content && stompClient) {
+            var chatMessage = {
+                content: content,
+                roomId: roomId
+            };
+            stompClient.send("/pub/chat.send", {}, JSON.stringify(chatMessage));
+            input.value = '';
+        }
+    }
+
+    function showMessage(message) {
+        var container = document.getElementById('chat-messages');
+        var isScrolledToBottom = container.scrollHeight - container.scrollTop === container.clientHeight;
+
+        var div = document.createElement('div');
+
+        if (message.sender === '시스템') {
+            div.className = 'chat-message system-chat';
+        } else if (message.sender === '관리자') {
+            div.className = 'chat-message admin-chat';
+        } else {
+            div.className = 'chat-message user-chat';
+        }
+
+        var html = '<strong>' + message.sender + ':</strong> ' + message.content +
+            ' <small class="text-muted">' + new Date(message.timestamp).toLocaleTimeString() + '</small>';
+
+        if (isAdmin && message.id && message.sender !== '시스템') {
+            html += ' <button class="delete-msg-btn" data-message-id="' + message.id + '">✕</button>';
+        }
+
+        div.innerHTML = html;
+        container.appendChild(div);
+
+        if (isAdmin && message.sessionId && message.sender !== '관리자' && message.sender !== '시스템') {
+            addOrReplaceBanButton(div, message.sessionId);
+        }
+
+        if (isScrolledToBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
+
+        var delBtn = div.querySelector('.delete-msg-btn');
+        if (delBtn) {
+            delBtn.addEventListener('click', function(e) {
+                var messageId = this.getAttribute('data-message-id');
+                if (confirm('메시지를 삭제하시겠습니까?')) {
+                    fetch('/admin/chat/messages/' + messageId, {
+                        method: 'DELETE',
+                        credentials: 'same-origin'
+                    })
+                        .then(function(res) {
+                            if (res.ok) {
+                                // 삭제 후 간단히 페이지 새로고침 (버튼 상태 정리)
+                                location.reload();
+                            } else {
+                                alert('삭제 실패');
+                            }
+                        });
+                }
+            });
+        }
+    }
+
+    function addOrReplaceBanButton(div, sessionId) {
+        var oldDiv = lastBanButtonElements[sessionId];
+        if (oldDiv) {
+            var oldBtn = oldDiv.querySelector('.ban-btn');
+            if (oldBtn) oldBtn.remove();
+        }
+
+        var btn = document.createElement('button');
+        btn.className = 'ban-btn';
+        btn.setAttribute('data-session-id', sessionId);
+        btn.textContent = '차단';
+        div.appendChild(btn);
+
+        btn.addEventListener('click', function(e) {
+            var sid = this.getAttribute('data-session-id');
+            if (confirm('이 사용자를 차단하시겠습니까?')) {
+                fetch('/admin/chat/ban/' + sid, {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                })
+                    .then(function(res) {
+                        if (res.ok) alert('차단 완료');
+                        else alert('차단 실패');
+                    });
+            }
+        });
+
+        lastBanButtonElements[sessionId] = div;
+    }
+
+    function loadHistory() {
+        lastBanButtonElements = {};
+        fetch('/api/chat/' + roomId + '/messages')
+            .then(res => res.json())
+            .then(messages => {
+                var container = document.getElementById('chat-messages');
+                container.innerHTML = '';
+                messages.forEach(showMessage);
+                container.scrollTop = container.scrollHeight;
+            });
+    }
+
+    document.getElementById('send-button').addEventListener('click', sendMessage);
+    document.getElementById('message-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    window.onload = connect;
+</script>
+</body>
+</html>

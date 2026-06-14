@@ -145,6 +145,18 @@ public class UserPageController {
         return "redirect:/questions/" + id;
     }
 
+    @GetMapping("/chat")
+    public String chatPage(Model model, HttpSession session) {
+        session.setAttribute("chat", "active");
+        model.addAttribute("jsessionId", session.getId());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> Objects.equals(a.getAuthority(), "ROLE_ADMIN"));
+        model.addAttribute("isAdmin", isAdmin);
+        return "chat";
+    }
+
     @GetMapping("/questions/{id}/author-email")
     @ResponseBody
     public String getAuthorEmail(@PathVariable Long id) {

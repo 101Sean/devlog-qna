@@ -24,12 +24,12 @@
 
       <!-- 로그인하지 않은 경우: 로그인 버튼 -->
       <span sec:authorize="!isAuthenticated()">
-                    <a href="/admin/login" class="apple-btn-secondary">로그인</a>
+                    <a href="/admin/login" class="apple-btn-secondary">관리자</a>
                 </span>
 
       <!-- 로그인한 경우: 관리페이지 + 로그아웃 -->
       <span sec:authorize="isAuthenticated()">
-                    <a href="/admin/dashboard" class="apple-btn-secondary">관리페이지</a>
+                    <a href="/admin/dashboard">관리</a>
                     <a href="/admin/logout" class="apple-btn-secondary">로그아웃</a>
                 </span>
     </div>

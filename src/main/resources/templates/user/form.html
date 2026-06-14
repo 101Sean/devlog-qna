@@ -13,13 +13,13 @@
   <div class="apple-nav-inner">
     <a class="apple-brand" href="/">💬 DevlogQnA</a>
     <div class="apple-nav-links">
-      <a href="/">질문 목록</a>
       <a href="/questions/new">질문 등록</a>
+      <a href="/chat">실시간 QnA</a>
       <span sec:authorize="!isAuthenticated()">
                     <a href="/admin/login" class="apple-btn-secondary">로그인</a>
                 </span>
       <span sec:authorize="isAuthenticated()">
-                    <a href="/admin/dashboard" class="apple-btn-secondary">관리페이지</a>
+                    <a href="/admin/dashboard">관리</a>
                     <a href="/admin/logout" class="apple-btn-secondary">로그아웃</a>
                 </span>
     </div>

@@ -250,13 +250,13 @@ public class QuestionService {
         return toResponse(question, true, null);
     }
 
-    // 조회수 증가 (동일 IP 30분)
+    // 조회수 증가 (동일 IP 120분)
     public void incrementViewCount(Long questionId) {
         String ip = httpServletRequest.getRemoteAddr();
         String duplicateKey = "qna:view:ip:" + questionId + ":" + ip;
 
         Boolean isNewView = redisTemplate.opsForValue()
-                .setIfAbsent(duplicateKey, "1", Duration.ofMinutes(30));
+                .setIfAbsent(duplicateKey, "1", Duration.ofMinutes(120));
 
         if (Boolean.TRUE.equals(isNewView)) {
             redisTemplate.opsForValue().increment("qna:question:views:" + questionId);

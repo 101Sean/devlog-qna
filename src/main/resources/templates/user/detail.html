@@ -14,20 +14,19 @@
 </head>
 <body class="bg-light" th:data-question-id="${question.id}">
 
-<!-- ===== 네비게이션 바 (layout.html과 동일) ===== -->
 <nav class="apple-nav">
   <div class="apple-nav-inner">
     <a class="apple-brand" href="/">💬 DevlogQnA</a>
     <div class="apple-nav-links">
-      <a href="/">질문 목록</a>
       <a href="/questions/new">질문 등록</a>
+      <a href="/chat">실시간 QnA</a>
       <!-- 로그인하지 않은 경우 -->
       <span sec:authorize="!isAuthenticated()">
                     <a href="/admin/login" class="apple-btn-secondary">로그인</a>
                 </span>
       <!-- 로그인한 경우 -->
       <span sec:authorize="isAuthenticated()">
-                    <a href="/admin/dashboard" class="apple-btn-secondary">관리페이지</a>
+                    <a href="/admin/dashboard">관리</a>
                     <a href="/admin/logout" class="apple-btn-secondary">로그아웃</a>
                 </span>
     </div>
@@ -35,7 +34,6 @@
 </nav>
 
 <div class="container main-content">
-  <!-- ========== 질문 본문 ========== -->
   <div class="apple-card detail-card">
     <div class="d-flex justify-content-between align-items-start mb-3">
       <h2 class="apple-card-title" th:text="${question.title}"></h2>
@@ -92,7 +90,6 @@
     </div>
   </div>
 
-  <!-- ========== 댓글 영역 ========== -->
   <div class="apple-card comment-section">
     <h4 class="apple-subheading">💬 댓글 (<span th:text="${#lists.size(comments)}">0</span>)</h4>
     <div class="comment-list">
@@ -144,7 +141,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("questionId:", questionId, "isAdmin:", isAdmin);
+        //console.log("questionId:", questionId, "isAdmin:", isAdmin);
 
         // 1. 좋아요 토글
         var likeBtn = document.getElementById('likeBtn');
@@ -179,12 +176,10 @@
                 .then(function(data) { document.getElementById('likeCount').textContent = data.likeCount; });
         }
 
-        // 2. 게시글 삭제
-        // 2. 게시글 삭제
         var deleteBtn = document.getElementById('deleteQuestionBtn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', function() {
-                console.log("삭제 버튼 클릭됨, isAdmin:", isAdmin);  // 콘솔 확인용
+                //console.log("삭제 버튼 클릭됨, isAdmin:", isAdmin);  // 콘솔 확인용
 
                 if (isAdmin) {
                     // 관리자: 확인 후 바로 삭제 API 호출
@@ -295,7 +290,7 @@
         document.querySelectorAll('.delete-answer-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var answerId = this.getAttribute('data-answer-id');
-                console.log("답변 삭제 버튼 클릭, answerId:", answerId);
+                //console.log("답변 삭제 버튼 클릭, answerId:", answerId);
                 if (!confirm('답변을 정말 삭제하시겠습니까?')) return;
                 fetch('/admin/answers/' + answerId, {
                     method: 'DELETE',

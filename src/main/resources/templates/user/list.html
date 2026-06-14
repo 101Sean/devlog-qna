@@ -14,18 +14,17 @@
 </head>
 <body class="bg-light">
 
-<!-- ===== 네비게이션 바 ===== -->
 <nav class="apple-nav">
   <div class="apple-nav-inner">
     <a class="apple-brand" href="/">💬 DevlogQnA</a>
     <div class="apple-nav-links">
-      <a href="/">질문 목록</a>
       <a href="/questions/new">질문 등록</a>
+      <a href="/chat">실시간 QnA</a>
       <span sec:authorize="!isAuthenticated()">
         <a href="/admin/login" class="apple-btn-secondary">로그인</a>
       </span>
       <span sec:authorize="isAuthenticated()">
-        <a href="/admin/dashboard" class="apple-btn-secondary">관리페이지</a>
+        <a href="/admin/dashboard">관리</a>
         <a href="/admin/logout" class="apple-btn-secondary">로그아웃</a>
       </span>
     </div>
@@ -36,15 +35,21 @@
   <div class="apple-section">
     <h2 class="apple-heading">질문 목록</h2>
 
-    <!-- 태그 필터 -->
-    <div class="filter-tags">
-      <a th:href="@{/(tag='')}" class="filter-tag">전체</a>
-      <a th:each="tag : ${tags}" th:href="@{/(tag=${tag.name})}"
-         class="filter-tag" th:text="${tag.name}"></a>
+    <!-- 태그 필터 (개선: 접기/펼치기 + 가로 스크롤) -->
+    <div class="filter-tags-wrapper">
+      <div class="filter-tags" id="filterTagsContainer">
+        <a th:href="@{/(tag='')}" class="filter-tag" id="filter-all">전체</a>
+        <a th:each="tag : ${tags}" th:href="@{/(tag=${tag.name})}"
+           class="filter-tag" th:text="${tag.name}"></a>
+      </div>
     </div>
 
     <!-- 질문 카드 리스트 -->
-    <div class="question-card-list">
+    <div class="question-card-list"
+         id="questionList"
+         th:data-total-pages="${questions.totalPages}"
+         th:data-current-page="${questions.page}">
+
       <div th:each="q : ${questions.content}"
            th:class="'question-card' + (${q.isSecret} ? ' secret' : '') + (${q.adminAnswered} ? ' answered' : '')">
 
@@ -72,11 +77,14 @@
             <span><i class="bi bi-heart"></i> <span th:text="${q.likeCount}">0</span></span>
             <span><i class="bi bi-chat-dots"></i> <span th:text="${q.commentCount}">0</span></span>
             <span><i class="bi bi-eye"></i> <span th:text="${q.viewCount}">0</span></span>
-            <span><i class="bi bi-clock"></i> <span th:text="${#temporals.format(q.createdAt, 'yyyy-MM-dd')}"></span></span>
+            <span><i class="bi bi-clock"></i> <span th:text="${#temporals.format(q.createdAt, 'yy-MM-dd')}"></span></span>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 페이지네이션 영역 -->
+    <div class="pagination-container" id="paginationContainer"></div>
   </div>
 </div>
 
@@ -84,23 +92,150 @@
     // meta 태그에서 isAdmin 값 읽어오기
     var isAdmin = document.querySelector('meta[name="isAdmin"]')?.content === 'true';
 
+    (function() {
+        var container = document.getElementById('filterTagsContainer');
+        if (!container) return;
+
+        var allTags = container.querySelectorAll('.filter-tag');
+        var MAX_VISIBLE = 5; // 기본 노출 개수
+
+        if (allTags.length <= MAX_VISIBLE) return;
+
+        // 5개 이후 태그 숨기기
+        for (var i = MAX_VISIBLE; i < allTags.length; i++) {
+            allTags[i].classList.add('hidden-tag');
+        }
+
+        // 더보기/접기 버튼 추가
+        var toggleBtn = document.createElement('button');
+        toggleBtn.className = 'toggle-tags-btn';
+        toggleBtn.textContent = '더보기 (' + (allTags.length - MAX_VISIBLE) + ')';
+        toggleBtn.setAttribute('type', 'button');
+
+        toggleBtn.addEventListener('click', function() {
+            var hiddenTags = container.querySelectorAll('.filter-tag.hidden-tag');
+            if (hiddenTags.length > 0) {
+                // 펼치기
+                hiddenTags.forEach(function(t) { t.classList.remove('hidden-tag'); });
+                toggleBtn.textContent = '접기';
+            } else {
+                // 접기
+                for (var i = MAX_VISIBLE; i < allTags.length; i++) {
+                    allTags[i].classList.add('hidden-tag');
+                }
+                toggleBtn.textContent = '더보기 (' + (allTags.length - MAX_VISIBLE) + ')';
+                container.scrollTo({ left: 0, behavior: 'smooth' });
+            }
+        });
+
+        container.appendChild(toggleBtn);
+    })();
+
+    (function() {
+        var questionList = document.getElementById('questionList');
+        var paginationContainer = document.getElementById('paginationContainer');
+        if (!questionList || !paginationContainer) return;
+
+        var totalPages = parseInt(questionList.getAttribute('data-total-pages')) || 1;
+        var currentPage = parseInt(questionList.getAttribute('data-current-page')) || 0; // 0-based
+
+        if (totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        // 현재 URL의 tag 파라미터 유지
+        function getTagParam() {
+            var urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('tag') || '';
+        }
+
+        function buildPageUrl(pageNum) {
+            var tag = getTagParam();
+            var url = '/?page=' + pageNum;
+            if (tag) url += '&tag=' + encodeURIComponent(tag);
+            return url;
+        }
+
+        function getPageNumbers() {
+            var pages = [];
+            var maxDisplay = 5;
+            var half = Math.floor(maxDisplay / 2);
+            var start = Math.max(0, currentPage - half);
+            var end = Math.min(totalPages - 1, start + maxDisplay - 1);
+
+            if (end - start + 1 < maxDisplay) {
+                start = Math.max(0, end - maxDisplay + 1);
+            }
+
+            if (start > 0) {
+                pages.push(0);
+                if (start > 1) pages.push('...');
+            }
+
+            for (var i = start; i <= end; i++) {
+                pages.push(i);
+            }
+
+            if (end < totalPages - 1) {
+                if (end < totalPages - 2) pages.push('...');
+                pages.push(totalPages - 1);
+            }
+
+            return pages;
+        }
+
+        function renderPagination() {
+            var pageNumbers = getPageNumbers();
+            var html = '<ul class="apple-pagination">';
+
+            // 이전
+            if (currentPage === 0) {
+                html += '<li class="page-item disabled"><span class="page-link">이전</span></li>';
+            } else {
+                html += '<li class="page-item"><a class="page-link" href="' + buildPageUrl(currentPage - 1) + '">이전</a></li>';
+            }
+
+            // 페이지 번호
+            for (var i = 0; i < pageNumbers.length; i++) {
+                var p = pageNumbers[i];
+                if (p === '...') {
+                    html += '<li class="page-ellipsis">…</li>';
+                } else if (p === currentPage) {
+                    html += '<li class="page-item active"><span class="page-link">' + (p + 1) + '</span></li>';
+                } else {
+                    html += '<li class="page-item"><a class="page-link" href="' + buildPageUrl(p) + '">' + (p + 1) + '</a></li>';
+                }
+            }
+
+            // 다음
+            if (currentPage >= totalPages - 1) {
+                html += '<li class="page-item disabled"><span class="page-link">다음</span></li>';
+            } else {
+                html += '<li class="page-item"><a class="page-link" href="' + buildPageUrl(currentPage + 1) + '">다음</a></li>';
+            }
+
+            html += '</ul>';
+            paginationContainer.innerHTML = html;
+        }
+
+        renderPagination();
+    })();
+
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.secret-link').forEach(function(link) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 var questionId = this.getAttribute('data-id');
 
-                // 관리자라면 비밀번호 없이 상세 페이지로
                 if (isAdmin) {
                     window.location.href = '/questions/' + questionId;
                     return;
                 }
 
-                // 비밀번호만 입력받기
                 var password = prompt("비밀번호를 입력해주세요:");
                 if (!password) return;
 
-                // 폼을 동적으로 생성하여 세션 기반 언락 엔드포인트로 제출
                 var form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '/questions/' + questionId + '/unlock';
